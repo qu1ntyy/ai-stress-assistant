@@ -1,0 +1,178 @@
+
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find and extract website ZIP
+        run: |
+          mkdir -p extracted
+          found=0
+          for archive in *.zip; do
+            [ -f "$archive" ] || continue
+            mkdir -p temp_extract
+            unzip -oq "$archive" -d temp_extract
+            if find temp_extract -name index.html | grep -q .; then
+              cp -r temp_extract/. extracted/
+              found=1
+              break
+            fi
+            rm -rf temp_extract
+          done
+          if [ "$found" -ne 1 ]; then
+            echo "Website ZIP with index.html not found"
+            exit 1
+          fi
+          mkdir -p app/src/main/assets/www
+          INDEX=$(find extracted -name index.html | head -n 1)
+          WEBROOT=$(dirname "$INDEX")
+          cp -r "$WEBROOT"/. app/src/main/assets/www/
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/com/stressassistant/app
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "StressAssistant"
+          include(":app")
+          EOF
+
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.7.3" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+          }
+          EOF
+
+          cat > app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+          android {
+              namespace = "com.stressassistant.app"
+              compileSdk = 35
+              defaultConfig {
+                  applicationId = "com.stressassistant.app"
+                  minSdk = 24
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "0.1.0"
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar"
+                  android:label="AI Stress Assistant"
+                  android:usesCleartextTraffic="false"
+                  android:allowBackup="false">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/stressassistant/app/MainActivity.kt <<'EOF'
+          package com.stressassistant.app
+
+          import android.app.Activity
+          import android.os.Bundle
+          import android.webkit.WebView
+          import android.webkit.WebViewClient
+          import android.webkit.WebChromeClient
+          import android.view.ViewGroup
+          import android.view.WindowManager
+
+          class MainActivity : Activity() {
+              private lateinit var webView: WebView
+
+              @Suppress("SetJavaScriptEnabled")
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  window.setSoftInputMode(
+                      WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                  )
+                  webView = WebView(this)
+                  webView.layoutParams = ViewGroup.LayoutParams(
+                      ViewGroup.LayoutParams.MATCH_PARENT,
+                      ViewGroup.LayoutParams.MATCH_PARENT
+                  )
+                  webView.settings.javaScriptEnabled = true
+                  webView.settings.domStorageEnabled = true
+                  webView.settings.allowFileAccess = true
+                  webView.settings.allowContentAccess = false
+                  webView.webViewClient = WebViewClient()
+                  webView.webChromeClient = WebChromeClient()
+                  setContentView(webView)
+                  if (savedInstanceState == null) {
+                      webView.loadUrl("file:///android_asset/www/index.html")
+                  } else {
+                      webView.restoreState(savedInstanceState)
+                  }
+              }
+
+              override fun onSaveInstanceState(outState: Bundle) {
+                  webView.saveState(outState)
+                  super.onSaveInstanceState(outState)
+              }
+
+              @Deprecated("Deprecated in Android")
+              override fun onBackPressed() {
+                  if (webView.canGoBack()) webView.goBack()
+                  else super.onBackPressed()
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Stress-Assistant-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
