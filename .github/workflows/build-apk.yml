@@ -45,6 +45,13 @@ jobs:
           test -f app/src/main/assets/www/index.html
           test -f app/src/main/assets/www/src/app.js
 
+      - name: Validate web app assets
+        run: |
+          test -f app/src/main/assets/www/index.html
+          test -f app/src/main/assets/www/styles/main.css
+          test -f app/src/main/assets/www/src/app.js
+          node --check app/src/main/assets/www/src/app.js
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
