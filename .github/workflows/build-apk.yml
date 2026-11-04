@@ -14,29 +14,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find and extract website ZIP
+      - name: Prepare website assets
         run: |
-          mkdir -p extracted
-          found=0
-          for archive in *.zip; do
-            [ -f "$archive" ] || continue
-            mkdir -p temp_extract
-            unzip -oq "$archive" -d temp_extract
-            if find temp_extract -name index.html | grep -q .; then
-              cp -r temp_extract/. extracted/
-              found=1
-              break
-            fi
-            rm -rf temp_extract
-          done
-          if [ "$found" -ne 1 ]; then
-            echo "Website ZIP with index.html not found"
-            exit 1
-          fi
           mkdir -p app/src/main/assets/www
-          INDEX=$(find extracted -name index.html | head -n 1)
-          WEBROOT=$(dirname "$INDEX")
-          cp -r "$WEBROOT"/. app/src/main/assets/www/
+          if [ -f client/index.html ]; then
+            echo "Using maintained source directory: client/"
+            cp -r client/. app/src/main/assets/www/
+          else
+            echo "Source directory not found; falling back to website ZIP"
+            mkdir -p extracted
+            found=0
+            for archive in *.zip; do
+              [ -f "$archive" ] || continue
+              mkdir -p temp_extract
+              unzip -oq "$archive" -d temp_extract
+              INDEX=$(find temp_extract -name index.html | head -n 1)
+              if [ -n "$INDEX" ]; then
+                WEBROOT=$(dirname "$INDEX")
+                cp -r "$WEBROOT"/. app/src/main/assets/www/
+                found=1
+                break
+              fi
+              rm -rf temp_extract
+            done
+            if [ "$found" -ne 1 ]; then
+              echo "Website source not found"
+              exit 1
+            fi
+          fi
+          test -f app/src/main/assets/www/index.html
+          test -f app/src/main/assets/www/src/app.js
 
       - name: Set up Java
         uses: actions/setup-java@v4
