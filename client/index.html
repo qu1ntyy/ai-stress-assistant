@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f8fc">
+<meta name="description" content="Личное пространство для самоподдержки и спокойных пауз.">
+<title>Mindful Space — поддержка рядом</title>
+<link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+  <a class="brand" href="#" data-page="home" aria-label="На главную"><span class="brand-mark">✳</span><span>mindful <b>space</b></span></a>
+  <button class="profile-button" id="profile-shortcut" aria-label="Открыть профиль">П</button>
+</header>
+<main id="screen" tabindex="-1" aria-live="polite"></main>
+<nav class="bottom-nav" aria-label="Основная навигация">
+  <button data-page="home" class="active"><span>⌂</span><small>Главная</small></button>
+  <button data-page="assistant"><span>✧</span><small>Диалог</small></button>
+  <button data-page="practices"><span>◌</span><small>Практики</small></button>
+  <button data-page="journal"><span>▤</span><small>Дневник</small></button>
+  <button data-page="progress"><span>⌁</span><small>Прогресс</small></button>
+</nav>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="src/app.js" defer></script>
+</body>
+</html>
