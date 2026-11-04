@@ -104,18 +104,18 @@ jobs:
                   kotlinOptions {
                       jvmTarget = "17"
                   }
-                  versionCode = 1
-                  versionName = "0.1.0"
+                  versionCode = 3
+                  versionName = "0.3.0"
               }
           }
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET"/>
+              
               <application
                   android:theme="@android:style/Theme.Material.Light.NoActionBar"
-                  android:label="AI Stress Assistant"
+                  android:label="Mindful Space"
                   android:usesCleartextTraffic="false"
                   android:allowBackup="false">
                   <activity
@@ -159,6 +159,10 @@ jobs:
                   webView.settings.domStorageEnabled = true
                   webView.settings.allowFileAccess = true
                   webView.settings.allowContentAccess = false
+                  webView.settings.javaScriptCanOpenWindowsAutomatically = false
+                  webView.settings.setSupportMultipleWindows(false)
+                  webView.settings.allowFileAccessFromFileURLs = false
+                  webView.settings.allowUniversalAccessFromFileURLs = false
                   webView.webViewClient = WebViewClient()
                   webView.webChromeClient = WebChromeClient()
                   setContentView(webView)
