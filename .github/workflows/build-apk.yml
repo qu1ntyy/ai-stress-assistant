@@ -288,13 +288,23 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mindful-space-release.p12"
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/mindful-space-release.p12" >> "$GITHUB_ENV"
 
+      - name: Verify release signing key
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "Checking keystore format and alias (passwords are not printed)"
+          keytool -list -storetype PKCS12 -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS"
+          echo "Keystore check passed"
+
       - name: Build signed release APK
         if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-        run: gradle assembleRelease
+        run: gradle assembleRelease --stacktrace
 
       - name: Build debug APK (until release signing is configured)
         if: ${{ env.ANDROID_KEYSTORE_BASE64 == '' }}
