@@ -112,8 +112,8 @@ jobs:
                   kotlinOptions {
                       jvmTarget = "17"
                   }
-                  versionCode = 8
-                  versionName = "0.5.3"
+                  versionCode = 9
+                  versionName = "0.5.4"
               }
           }
           EOF
@@ -150,9 +150,14 @@ jobs:
           import android.view.ViewGroup
           import android.view.WindowManager
           import android.content.Context
+          import android.content.Intent
+          import android.net.Uri
+          import android.webkit.ValueCallback
 
           class MainActivity : Activity() {
               private lateinit var webView: WebView
+              private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+              private val fileChooserRequestCode = 1001
 
               inner class MindfulStorage(context: Context) {
                   private val prefs = context.getSharedPreferences("mindful_space_data", Context.MODE_PRIVATE)
@@ -192,11 +197,28 @@ jobs:
                   webView.settings.allowUniversalAccessFromFileURLs = false
                   webView.addJavascriptInterface(MindfulStorage(this), "MindfulStorage")
                   webView.webViewClient = WebViewClient()
-                  webView.webChromeClient = WebChromeClient()
+                  webView.webChromeClient = object : WebChromeClient() {
+                      override fun onShowFileChooser(view: WebView?, filePathCallback: ValueCallback<Array<Uri>>?, fileChooserParams: FileChooserParams?): Boolean {
+                          fileChooserCallback?.onReceiveValue(null)
+                          fileChooserCallback = filePathCallback
+                          val intent = Intent(Intent.ACTION_GET_CONTENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "application/json" }
+                          return try { startActivityForResult(intent, fileChooserRequestCode); true } catch (_: Exception) { fileChooserCallback?.onReceiveValue(null); fileChooserCallback = null; false }
+                      }
+                  }
                   setContentView(webView)
                   webView.loadUrl("file:///android_asset/www/index.html")
               }
 
+              @Deprecated("Deprecated in Android")
+              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+                  super.onActivityResult(requestCode, resultCode, data)
+                  if (requestCode == fileChooserRequestCode) {
+                      val result = if (resultCode == RESULT_OK && data?.data != null) arrayOf(data.data!!) else null
+                      fileChooserCallback?.onReceiveValue(result)
+                      fileChooserCallback = null
+                  }
+              }
+              
               @Deprecated("Deprecated in Android")
               override fun onBackPressed() {
                   if (webView.canGoBack()) webView.goBack()
