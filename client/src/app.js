@@ -256,6 +256,13 @@ async function send(message){
  if(!reply&&stressSession){
   if(stressStage==="intro"){reply=stressClarifyingReply(message)}
   else if(stressStage==="clarify"){stressAnswers.push(message);reply=stressRecommendation()}
+  else if(stressStage==="review"){
+   const t=message.toLowerCase();
+   if(/легче|лучше|спокойн|помогло/.test(t)){stressStage="followup";reply="Хорошо, что стало немного легче. На этом можно остановиться и дать себе время. Если хочешь, расскажи, что оказалось полезным."}
+   else if(/ничего|так же|без изменений|не изменил/.test(t)){const alt=practices.find(p=>p.id!==selectedPractice);recommendedPractice=alt?.id||"pause";stressStage="recommend";reply="Спасибо, что отметил(а). Не каждое упражнение подходит каждому. Можем попробовать другой вариант или просто поговорить."}
+   else if(/хуже|некомфорт|неприят|тяжелее/.test(t)){stressStage="followup";reply="Тогда остановимся — продолжать упражнение не нужно. Переключись на то, что ощущается безопасным и комфортным. Если трудно справиться одному/одной, обратись к человеку, которому доверяешь, или к взрослому рядом."}
+   else{reply="Я не хочу неверно понять тебя. Что ближе: стало легче, ничего не изменилось или стало некомфортнее? Можно также пропустить оценку кнопкой ниже."}
+  }
   else{reply=localReply(message)}
  }else if(!reply){reply=localReply(message)}
  chat.push({role:"assistant",text:reply});busy=false;render();
