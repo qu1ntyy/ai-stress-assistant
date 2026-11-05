@@ -5,8 +5,21 @@ const screen=document.getElementById("screen"),toastEl=document.getElementById("
 const STORE="mindful_space_v3";
 let page="home",chat=[],selectedPractice=null,practiceStep=0,busy=false,journalMonth=new Date(),journalFilter="",editingId=null;
 const emptyData=()=>({journal:[],completed:[],checkins:[],longTermAnswers:null,profileName:"",program:null});
-const read=()=>{try{const d=JSON.parse(localStorage.getItem(STORE))||{};return {...emptyData(),...d,journal:Array.isArray(d.journal)?d.journal:[],completed:Array.isArray(d.completed)?d.completed:[],checkins:Array.isArray(d.checkins)?d.checkins:[]}}catch{return emptyData()}};
-const write=data=>localStorage.setItem(STORE,JSON.stringify(data));
+function storedRaw(){
+ try{
+  const native=window.MindfulStorage;
+  if(native&&typeof native.load==="function"){
+   const saved=native.load();
+   if(saved)return saved;
+   const legacy=localStorage.getItem(STORE);
+   if(legacy){native.save(legacy);return legacy}
+   return null;
+  }
+  return localStorage.getItem(STORE);
+ }catch{return localStorage.getItem(STORE)}
+}
+const read=()=>{try{const d=JSON.parse(storedRaw()||"null")||{};return {...emptyData(),...d,journal:Array.isArray(d.journal)?d.journal:[],completed:Array.isArray(d.completed)?d.completed:[],checkins:Array.isArray(d.checkins)?d.checkins:[]}}catch{return emptyData()}};
+const write=data=>{const raw=JSON.stringify(data);try{if(window.MindfulStorage&&typeof window.MindfulStorage.save==="function"){window.MindfulStorage.save(raw);return}}catch{}localStorage.setItem(STORE,raw)};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dateNow=()=>new Date().toLocaleDateString("ru-RU");
 const dateKey=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
@@ -107,7 +120,7 @@ document.addEventListener("click",e=>{
  if(e.target.closest("[data-clear-filter]")){journalFilter="";render();return}
  if(e.target.closest("#save-profile")){const d=read();d.profileName=document.getElementById("profile-name").value.trim().slice(0,40);write(d);render();toast("Профиль сохранён");return}
  if(e.target.closest("#export-data")){exportData();return}
- if(e.target.closest("#delete-data")){if(confirm("Удалить дневник, отметки, профиль и историю практик с этого устройства?")){localStorage.removeItem(STORE);chat=[];editingId=null;go("profile");toast("Локальные данные удалены")}return}
+ if(e.target.closest("#delete-data")){if(confirm("Удалить дневник, отметки, профиль и историю практик с этого устройства?")){localStorage.removeItem(STORE);try{window.MindfulStorage?.clear()}catch{}chat=[];editingId=null;go("profile");toast("Локальные данные удалены")}return}
 });
 document.addEventListener("submit",e=>{e.preventDefault();const form=e.target,fd=new FormData(form);
  if(form.id==="stress-form"){const m=String(fd.get("message")||"").trim();if(m)send(m)}
