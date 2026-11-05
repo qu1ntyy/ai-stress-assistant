@@ -285,7 +285,10 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mindful-space-release.p12"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mindful-space-release.p12"
+          echo "Base64 character count: ${#KEYSTORE_BASE64}"
+          echo "Decoded keystore size: $(wc -c < "$RUNNER_TEMP/mindful-space-release.p12") bytes"
+          file "$RUNNER_TEMP/mindful-space-release.p12"
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/mindful-space-release.p12" >> "$GITHUB_ENV"
 
       - name: Verify release signing key
