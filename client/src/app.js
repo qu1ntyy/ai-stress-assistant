@@ -3,7 +3,7 @@
 "use strict";
 const screen=document.getElementById("screen"),toastEl=document.getElementById("toast");
 const STORE="mindful_space_v3";
-let page="home",chat=[],selectedPractice=null,practiceStep=0,busy=false,journalMonth=new Date(),journalFilter="",editingId=null;
+let page="home",chat=[],selectedPractice=null,practiceStep=0,busy=false,journalMonth=new Date(),journalFilter="",editingId=null,stressSession=false,stressTopic="general",stressStage="intro",stressAnswers=[];
 const AI_PROVIDER={name:"gemini",endpoint:"",enabled:false}; // Provider adapter is prepared; network calls remain disabled until deployment is approved.
 const AI_CONSENT_KEY="mindful_space_ai_consent_v1";
 const hasAIConsent=()=>{try{return localStorage.getItem(AI_CONSENT_KEY)==="yes"}catch{return false}};
@@ -187,7 +187,7 @@ function programPage(){
  <div class="section-head"><h2>История программы</h2></div>${history.length?history.slice().reverse().slice(0,7).map(x=>`<div class="card record"><div class="record-meta"><b>День ${x.dayNumber}</b><span>${esc(x.date)}</span></div><p>${x.status==="Сохранён"?"Прогресс сохранён":"День не был сохранён"}</p>${x.reflection?`<p class="form-hint">${esc(x.reflection)}</p>`:""}</div>`).join(""):`<div class="empty">Здесь появятся сохранённые дни программы.</div>`}
  <button class="button secondary full" data-page="long">Пересмотреть ответы анкеты</button>`;
 }
-function assistantPage(){const online=Boolean(AI_PROVIDER.enabled&&AI_PROVIDER.endpoint);return `<div class="eyebrow">${online&&hasAIConsent()?"ИИ-ПОМОЩНИК":"ЛОКАЛЬНЫЙ ПОМОЩНИК"}</div><h1 class="h1">Разговор без спешки</h1><div class="notice">${online&&hasAIConsent()?"Ответы создаёт Gemini. Текст текущего диалога отправляется через Cloudflare в Google Gemini API. Дневник и профиль не передаются.":"Пока доступны локальные ответы. Внешний ИИ подготовлен архитектурно, но пока отключён. Локальные ответы доступны без отправки данных в интернет. Не указывай личные данные."}</div><div class="chat-list">${chat.map(m=>`<div class="bubble ${m.role}">${esc(m.text)}</div>`).join("")||'<div class="bubble">Привет. О чём тебе хотелось бы поговорить?</div>'}</div><form id="chat-form"><textarea class="textarea" name="message" maxlength="1800" required placeholder="Напиши сообщение..." rows="3"></textarea><button class="button full" ${busy?"disabled":""}>${busy?"Подожди…":"Отправить"}</button></form><p class="form-hint">Не отправляй личные данные. История диалога существует только до закрытия приложения.</p>`}
+function assistantPage(){const online=Boolean(AI_PROVIDER.enabled&&AI_PROVIDER.endpoint);return `<div class="eyebrow">${stressSession?"СТРЕСС СЕЙЧАС":online&&hasAIConsent()?"ИИ-ПОМОЩНИК":"ЛОКАЛЬНЫЙ ПОМОЩНИК"}</div><h1 class="h1">${stressSession?"Давай разберёмся вместе":"Разговор без спешки"}</h1><div class="notice">${online&&hasAIConsent()?"Ответы создаёт Gemini. Текст текущего диалога отправляется через Cloudflare в Google Gemini API. Дневник и профиль не передаются.":"Пока доступны локальные ответы. Внешний ИИ подготовлен архитектурно, но пока отключён. Локальные ответы доступны без отправки данных в интернет. Не указывай личные данные."}</div><div class="chat-list">${chat.map(m=>`<div class="bubble ${m.role}">${esc(m.text)}</div>`).join("")||'<div class="bubble">Привет. О чём тебе хотелось бы поговорить?</div>'}</div><form id="chat-form"><textarea class="textarea" name="message" maxlength="1800" required placeholder="Напиши сообщение..." rows="3"></textarea><button class="button full" ${busy?"disabled":""}>${busy?"Подожди…":"Отправить"}</button></form><p class="form-hint">Не отправляй личные данные. История диалога существует только до закрытия приложения.</p>`}
 function practicesPage(){return `<div class="eyebrow">БИБЛИОТЕКА</div><h1 class="h1">Практики</h1><p class="sub">Небольшие упражнения. Выбирай только то, что сейчас подходит, и останавливайся, если становится некомфортно.</p>${practices.map(p=>`<div class="card practice-card"><div class="practice-art">◌</div><div style="flex:1"><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><span class="tag">${p.time} · ${esc(p.category)}</span><div><button class="button secondary" data-practice="${p.id}" style="margin-top:10px">Начать</button></div></div></div>`).join("")}`}
 function runPage(){const p=practices.find(x=>x.id===selectedPractice)||practices[0],i=practiceStep;return `<button class="back" data-page="practices">← К практикам</button><div class="eyebrow">${esc(p.category)} · ${p.time}</div><h1 class="h1">${esc(p.title)}</h1><div class="step"><div class="step-count">ШАГ ${i+1} ИЗ ${p.steps.length}</div><h2>${["Подготовься","Обрати внимание","Продолжай в своём темпе","Завершение"][Math.min(i,3)]}</h2><p>${esc(p.steps[i])}</p></div><div class="notice">${esc(p.caution)}</div><div style="display:flex;gap:10px">${i>0?'<button class="button secondary" data-step="-1">Назад</button>':""}<button class="button" style="flex:1" data-step="1">${i===p.steps.length-1?"Завершить":"Следующий шаг"}</button></div>`}
 function calendarHtml(entries){const y=journalMonth.getFullYear(),m=journalMonth.getMonth(),first=new Date(y,m,1),offset=(first.getDay()+6)%7,days=new Date(y,m+1,0).getDate(),marked=new Set(entries.map(e=>{const d=parseDate(e.date);return d&&d.getMonth()===m&&d.getFullYear()===y?d.getDate():null}).filter(Boolean));let cells=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(x=>`<span class="muted" style="text-align:center;font-size:10px">${x}</span>`).join("");for(let i=0;i<offset;i++)cells+='<span></span>';for(let day=1;day<=days;day++){const key=dateKey(new Date(y,m,day));cells+=`<button class="calendar-day ${marked.has(day)?"has-entry":""} ${journalFilter===key?"selected":""}" data-calendar-day="${key}">${day}</button>`}return `<div class="card"><div class="section-head" style="margin:0 0 8px"><button class="button ghost" data-month="-1">‹</button><b style="font-size:13px">${journalMonth.toLocaleDateString("ru-RU",{month:"long",year:"numeric"})}</b><button class="button ghost" data-month="1">›</button></div><div class="calendar-grid">${cells}</div><p class="form-hint">Зелёным отмечены дни, в которые есть записи.</p>${journalFilter?`<button class="button ghost" data-clear-filter>Показать все записи</button>`:""}</div>`}
@@ -202,12 +202,56 @@ async function requestAI(){
  const data=await response.json();
  return typeof data.reply==="string"&&data.reply.trim()?data.reply.trim():null;
 }
+function classifyStress(text){
+ const t=String(text||"").toLowerCase();
+ if(/экзамен|уч[её]б|школ|домашн|дедлайн|работ|задач/.test(t))return "study";
+ if(/тревог|страш|пережива|волную|паник|неопределён/.test(t))return "anxiety";
+ if(/зл|раздраж|бесит|сорвал|ненавиж/.test(t))return "anger";
+ if(/одинок|одна|один|никому не нужен|не с кем поговор/.test(t))return "lonely";
+ if(/друг|подруг|девуш|парн|отношен|поссор|родител|мама|папа/.test(t))return "relationships";
+ if(/сон|не сплю|бессон|устал|не высыпа/.test(t))return "sleep";
+ return "general";
+}
+function stressClarifyingReply(message){
+ stressTopic=classifyStress(message);
+ stressStage="clarify";
+ const questions={
+  study:"Что сейчас сильнее всего давит: объём задач, нехватка времени или страх не справиться?",
+  anxiety:"Что в этой ситуации тревожит сильнее всего: возможный исход, неизвестность или то, что трудно на что-то повлиять?",
+  anger:"Что задело сильнее: само событие, чьи-то слова или ощущение, что с тобой поступили несправедливо?",
+  lonely:"Тебе сейчас больше не хватает общения, понимания или конкретного человека рядом?",
+  relationships:"Что сейчас важнее: понять свои чувства, наладить разговор или решить, как поступить дальше?",
+  sleep:"Что больше мешает восстановиться: мысли перед сном, режим или ощущение постоянной усталости?",
+  general:"Что сейчас ощущается самым трудным: сами события, твои мысли о них или то, как это влияет на тебя?"
+ };
+ return "Спасибо, что рассказал(а). Я хочу сначала немного лучше понять ситуацию, чтобы не предлагать случайный совет. "+questions[stressTopic];
+}
+function stressRecommendation(){
+ stressStage="recommend";
+ const recommendations={
+  study:{id:"next",why:"Когда задач много, один небольшой и конкретный шаг иногда помогает вернуть ощущение ясности."},
+  anxiety:{id:"facts",why:"Если тревогу поддерживает неопределённость, может помочь разделить известные факты и предположения."},
+  anger:{id:"pause",why:"Небольшая пауза может дать пространство, чтобы не торопиться с решениями, пока эмоции сильны."},
+  lonely:{id:"kind",why:"Можно начать с бережного отношения к себе и подумать, какая поддержка сейчас была бы уместна."},
+  relationships:{id:"facts",why:"Полезно отделить то, что действительно произошло, от выводов и предположений о намерениях другого человека."},
+  sleep:{id:"pause",why:"Сейчас может быть полезнее короткая спокойная пауза без требования немедленно всё исправить."},
+  general:{id:"ground",why:"Мягкое переключение внимания на окружающую обстановку может стать простым первым шагом."}
+ };
+ const rec=recommendations[stressTopic]||recommendations.general;
+ const p=practices.find(x=>x.id===rec.id)||practices[0];
+ return "Спасибо, теперь я лучше понимаю, что для тебя важно. "+rec.why+"\n\nМоя рекомендация: "+p.title+" ("+p.time+"). "+p.desc+"\n\nЕсли тебе подходит, нажми «Начать рекомендованную практику». Можно выбрать другой вариант или просто продолжить разговор.";
+}
 async function send(message){
  if(busy)return;
  chat.push({role:"user",text:message});go("assistant");busy=true;render();
  let reply=null;
- if(AI_PROVIDER.enabled&&AI_PROVIDER.endpoint&&hasAIConsent()){try{reply=await requestAI()}catch(error){console.warn("Gemini unavailable; using local fallback",error)}}
- chat.push({role:"assistant",text:reply||localReply(message)});busy=false;render();
+ if(AI_PROVIDER.enabled&&AI_PROVIDER.endpoint&&hasAIConsent()){try{reply=await requestAI()}catch(error){console.warn("AI unavailable; using local fallback",error)}}
+ if(!reply&&stressSession){
+  if(stressStage==="intro"){reply=stressClarifyingReply(message)}
+  else if(stressStage==="clarify"){stressAnswers.push(message);reply=stressRecommendation()}
+  else{reply=localReply(message)}
+ }else if(!reply){reply=localReply(message)}
+ chat.push({role:"assistant",text:reply});busy=false;render();
 }
 function saveCheckin(mood){const d=read();d.checkins.unshift({mood,date:dateNow()});d.checkins=d.checkins.slice(0,100);write(d);toast("Отметка сохранена");render()}
 function exportData(){const payload={format:"mindful-space-backup",version:1,exportedAt:new Date().toISOString(),data:read()},json=JSON.stringify(payload,null,2);try{if(window.MindfulStorage&&typeof window.MindfulStorage.exportData==="function"){window.MindfulStorage.exportData(json);return}}catch{}const a=document.createElement("a"),url=URL.createObjectURL(new Blob([json],{type:"application/json"}));a.href=url;a.download="mindful-space-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -234,7 +278,7 @@ document.addEventListener("click",e=>{
  if(e.target.closest("#delete-data")){if(confirm("Удалить дневник, отметки, профиль и историю практик с этого устройства?")){localStorage.removeItem(STORE);try{window.MindfulStorage?.clear()}catch{}chat=[];editingId=null;go("profile");toast("Локальные данные удалены")}return}
 });
 document.addEventListener("submit",e=>{e.preventDefault();const form=e.target,fd=new FormData(form);
- if(form.id==="stress-form"){const m=String(fd.get("message")||"").trim();if(m)send(m)}
+ if(form.id==="stress-form"){const m=String(fd.get("message")||"").trim();if(m){chat=[];stressSession=true;stressStage="intro";stressAnswers=[];send(m)}}
  if(form.id==="long-form"){const d=read();d.longTermAnswers=Object.fromEntries(fd);d.program=makeProgram(d.longTermAnswers);write(d);go("long-result")}
  if(form.id==="chat-form"){const m=String(fd.get("message")||"").trim();if(m){form.reset();send(m)}}
  if(form.id==="program-review-form"){const d=read(),p=d.program;if(!p)return;const saved=(p.history||[]).filter(x=>x.status==="Сохранён").length;p.reviews=p.reviews||[];p.reviews.unshift({date:dateNow(),savedDays:saved,fit:String(fd.get("fit")||"Пока не знаю"),note:String(fd.get("note")||"").trim().slice(0,500)});p.reviews=p.reviews.slice(0,30);p.nextReviewAt=saved+7;write(d);go("program");toast("Обзор сохранён");return}
