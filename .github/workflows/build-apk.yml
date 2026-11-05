@@ -112,8 +112,8 @@ jobs:
                   kotlinOptions {
                       jvmTarget = "17"
                   }
-                  versionCode = 6
-                  versionName = "0.5.1"
+                  versionCode = 7
+                  versionName = "0.5.2"
               }
           }
           EOF
@@ -143,14 +143,33 @@ jobs:
 
           import android.app.Activity
           import android.os.Bundle
+          import android.webkit.JavascriptInterface
           import android.webkit.WebView
           import android.webkit.WebViewClient
           import android.webkit.WebChromeClient
           import android.view.ViewGroup
           import android.view.WindowManager
+          import android.content.Context
 
           class MainActivity : Activity() {
               private lateinit var webView: WebView
+
+              inner class MindfulStorage(context: Context) {
+                  private val prefs = context.getSharedPreferences("mindful_space_data", Context.MODE_PRIVATE)
+
+                  @JavascriptInterface
+                  fun load(): String = prefs.getString("app_data", "") ?: ""
+
+                  @JavascriptInterface
+                  fun save(value: String) {
+                      prefs.edit().putString("app_data", value).commit()
+                  }
+
+                  @JavascriptInterface
+                  fun clear() {
+                      prefs.edit().remove("app_data").commit()
+                  }
+              }
 
               @Suppress("SetJavaScriptEnabled")
               override fun onCreate(savedInstanceState: Bundle?) {
@@ -171,19 +190,11 @@ jobs:
                   webView.settings.setSupportMultipleWindows(false)
                   webView.settings.allowFileAccessFromFileURLs = false
                   webView.settings.allowUniversalAccessFromFileURLs = false
+                  webView.addJavascriptInterface(MindfulStorage(this), "MindfulStorage")
                   webView.webViewClient = WebViewClient()
                   webView.webChromeClient = WebChromeClient()
                   setContentView(webView)
-                  if (savedInstanceState == null) {
-                      webView.loadUrl("file:///android_asset/www/index.html")
-                  } else {
-                      webView.restoreState(savedInstanceState)
-                  }
-              }
-
-              override fun onSaveInstanceState(outState: Bundle) {
-                  webView.saveState(outState)
-                  super.onSaveInstanceState(outState)
+                  webView.loadUrl("file:///android_asset/www/index.html")
               }
 
               @Deprecated("Deprecated in Android")
