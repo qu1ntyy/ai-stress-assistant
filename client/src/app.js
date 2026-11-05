@@ -48,18 +48,64 @@ function stressPage(){return `<button class="back" data-page="home">← Наза
 function longQuestionnairePage(){const saved=read().longTermAnswers||{};return `<button class="back" data-page="home">← Назад</button><div class="eyebrow">ДЛИТЕЛЬНЫЙ СТРЕСС · ЗНАКОМСТВО</div><h1 class="h1">Давай посмотрим на общую картину</h1><p class="sub">Это не диагностический тест. Несколько вопросов помогут определить, какие повседневные области тебе хотелось бы поддержать.</p><form id="long-form"><label class="field-label">Как давно ты замечаешь напряжение?</label><select class="select" name="duration"><option>Несколько дней</option><option>Несколько недель</option><option>Несколько месяцев</option><option>Дольше</option><option>Трудно определить</option></select><label class="field-label">Что сейчас сильнее всего влияет на самочувствие?</label><select class="select" name="source"><option>Учёба или работа</option><option>Отношения и общение</option><option>Большое количество дел</option><option>Неопределённость</option><option>Сон и режим</option><option>Другое или несколько факторов</option></select><label class="field-label">Как ты оцениваешь качество своего отдыха?</label><select class="select" name="rest"><option>В основном удаётся отдыхать</option><option>Иногда не хватает отдыха</option><option>Часто не получается восстановиться</option><option>Пока сложно оценить</option></select><label class="field-label">Как напряжение отражается на повседневности?</label><select class="select" name="impact"><option>Почти не мешает привычным делам</option><option>Иногда мешает сосредоточиться или отдыхать</option><option>Заметно влияет на несколько сфер жизни</option><option>Трудно оценить</option></select><label class="field-label">Что хотелось бы улучшить в первую очередь?</label><select class="select" name="goal"><option>Лучше понимать свои эмоции</option><option>Находить время на отдых</option><option>Справляться с напряжёнными ситуациями</option><option>Улучшить повседневный режим</option><option>Пока хочу разобраться</option></select><button class="button full" type="submit" style="margin-top:20px">Сформировать мой обзор</button></form><div class="notice green">Можно пропустить анкету или вернуться к ней позже. Здесь нет правильных и неправильных ответов.</div>`}
 function longPage(){const d=read();if(d.program){const p=d.program,saved=(p.history||[]).filter(x=>x.status==="Сохранён").length;return `<div class="eyebrow">ДЛИТЕЛЬНЫЙ СТРЕСС</div><h1 class="h1">Твоя программа уже готова</h1><p class="sub">Анкета уже пройдена. Можно продолжить с того места, где ты остановился(ась).</p><div class="card"><span class="tag">Фокус: ${esc(p.focus||"Твоя поддержка")}</span><div class="profile-line"><b>Сохранённых дней</b><span>${saved}</span></div><div class="profile-line"><b>Статус</b><span>${p.finished?"Завершена":p.paused?"На паузе":"Продолжается"}</span></div><button class="button full" data-page="program">Продолжить программу</button></div><button class="button secondary full" data-page="long-edit">Изменить ответы анкеты</button><div class="notice">Повторно проходить анкету не нужно. Текущая программа и её история сохраняются.</div>`}return longQuestionnairePage()}
 function dailyTasks(a,dayNumber,d){
- const focus=a.goal||"Понять, что сейчас важно";
+ const focus=a.goal||"Пока хочу разобраться";
+ const source=a.source||"";
  const lastMood=d.checkins?.[0]?.mood||"";
- const gentle=/Непросто|Напряжённо|Устал/i.test(lastMood);
+ const gentle=/Непросто|Напряжённо|Устал/i.test(lastMood)||/часто не получается|заметно влияет/i.test((a.rest||"")+" "+(a.impact||""));
  const pools={
- rest:["Заметь, в какой момент дня тебе особенно нужна пауза.","Выбери короткий перерыв без обязательных дел.","Подумай, что помогает тебе переключиться после нагрузки.","Попробуй оставить небольшое время для спокойного занятия.","Оцени, какой вид отдыха сегодня был бы реалистичным."],
- emotions:["Один раз за день назови чувство, которое заметил(а).","Если хочется, запиши, что могло повлиять на настроение.","Попробуй отнестись к своему чувству без оценки и критики.","Заметь, меняется ли твоё состояние в разных ситуациях.","Подумай, какая поддержка была бы сейчас кстати."],
- routine:["Выбери одну привычную точку дня для небольшой паузы.","Добавь к обычному делу короткое действие для переключения.","Понаблюдай, какой распорядок сегодня оказался удобным.","Выбери одну небольшую задачу и реалистичное время для неё.","Подумай, что можно упростить в завтрашнем дне."],
- general:["Заметь одну ситуацию, которая сегодня занимала много внимания.","Раздели то, на что можешь повлиять, и то, что пока не зависит от тебя.","Выбери один небольшой посильный шаг.","Подумай, с кем можно спокойно обсудить то, что беспокоит.","Отметь одну вещь, которая сегодня хоть немного помогла."]
+ rest:[
+  "Заметь, в какой момент дня тебе особенно нужна пауза.",
+  "Выбери короткий перерыв без обязательных дел.",
+  "Подумай, что помогает тебе переключиться после нагрузки.",
+  "Оцени, какой вид отдыха сегодня был бы реалистичным.",
+  "Если удобно, освободи несколько минут от необязательных задач.",
+  "Вспомни занятие, после которого обычно становится немного спокойнее.",
+  "Подумай, что сегодня можно перенести или упростить."
+ ],
+ emotions:[
+  "Один раз за день попробуй назвать чувство, которое заметил(а).",
+  "Если хочется, запиши, что могло повлиять на настроение.",
+  "Попробуй отнестись к своему чувству без оценки и критики.",
+  "Заметь, меняется ли твоё состояние в разных ситуациях.",
+  "Подумай, какая поддержка была бы сейчас кстати.",
+  "Отдели само чувство от ситуации, которая могла его вызвать.",
+  "Выбери слово или фразу, которая точнее всего описывает сегодняшний день."
+ ],
+ routine:[
+  "Выбери одну привычную точку дня для небольшой паузы.",
+  "Добавь к обычному делу короткое действие для переключения.",
+  "Понаблюдай, какой распорядок сегодня оказался удобным.",
+  "Выбери одну небольшую задачу и реалистичное время для неё.",
+  "Подумай, что можно упростить в завтрашнем дне.",
+  "Отметь, в какое время дня тебе проще сосредоточиться.",
+  "Выбери одно необязательное дело, которое можно перенести."
+ ],
+ general:[
+  "Заметь одну ситуацию, которая сегодня занимала много внимания.",
+  "Раздели то, на что можешь повлиять, и то, что пока не зависит от тебя.",
+  "Выбери один небольшой посильный шаг.",
+  "Подумай, с кем можно спокойно обсудить то, что беспокоит.",
+  "Отметь одну вещь, которая сегодня хоть немного помогла.",
+  "Подумай, какая часть сегодняшней нагрузки действительно важна.",
+  "Заметь, что сегодня получилось сделать в удобном для тебя темпе."
+ ]
  };
- const key=/отдых|сон/i.test(focus)||/отдых|сон/i.test(a.source)?"rest":/эмоц/i.test(focus)?"emotions":/режим/i.test(focus)?"routine":"general";
- const pool=pools[key],first=pool[(dayNumber-1)%pool.length],second=gentle?"Выбери самый простой вариант заботы о себе — или разреши себе сегодня ничего не добавлять.":pool[(dayNumber+1)%pool.length];
- return [{id:1,text:first,done:false},{id:2,text:second,done:false}];
+ const key=/отдых|сон/i.test(focus)||/отдых|сон/i.test(source)?"rest":/эмоц/i.test(focus)?"emotions":/режим/i.test(focus)?"routine":"general";
+ const pool=pools[key],index=(Math.max(1,dayNumber)-1)%pool.length;
+ const first=pool[index];
+ const second=gentle
+  ?"Сегодня можно выбрать только один небольшой шаг или вовсе отдохнуть. Ничего наверстывать не нужно."
+  :pool[(index+2)%pool.length];
+ const prompts={
+  rest:"Что сегодня помогло тебе немного восстановиться — или чего не хватило?",
+  emotions:"Какое чувство чаще всего сопровождало тебя сегодня? Можно не отвечать.",
+  routine:"Какой момент дня сегодня оказался наиболее удобным или сложным?",
+  general:"Что сегодня было для тебя самым важным? Можно записать одну мысль."
+ };
+ return [
+  {id:1,text:first,done:false},
+  {id:2,text:second,done:false}
+ ];
 }
 function makeProgram(a){
  const d=read(),focus=a.goal||"Понять, что сейчас важно",dayNumber=1;
@@ -87,11 +133,12 @@ function programPage(){
  <div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><b>День ${day.dayNumber}</b><span class="tag">${saved} сохранённых дней</span></div><p class="form-hint">Программа не ограничена 7, 14 или 30 днями. Она меняется постепенно и продолжается по твоему желанию.</p></div>
  ${p.finished?`<div class="notice green">Ты завершил(а) программу. История сохранена. Если захочешь, можно вернуться к поддерживающим шагам.</div><button class="button full" data-program-action="continue">Возобновить программу</button>`:p.paused?`<div class="notice">Программа на паузе. Все сохранённые дни остаются в истории.</div><button class="button full" data-program-action="continue">Продолжить программу</button>`:`<div class="card"><div style="display:flex;justify-content:space-between"><b>Задания на сегодня</b><b style="color:var(--blue-dark)">${done} из ${total}</b></div><div style="height:8px;background:#edf2f6;border-radius:99px;margin-top:12px;overflow:hidden"><div style="height:100%;width:${total?done/total*100:0}%;background:var(--green)"></div></div><p class="form-hint">${day.saved?"Сегодняшний результат уже сохранён.":"Отметь выполненное, затем сохрани результат за сегодня."}</p></div>
  <div class="section-head"><h2>Твои шаги</h2></div>${day.tasks.map(t=>`<label class="card" style="display:flex;gap:12px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-program-task="${t.id}" ${t.done?"checked":""} ${day.saved?"disabled":""} style="width:20px;height:20px;flex:none;margin:1px 0;accent-color:var(--green)"><span style="font-size:13px;line-height:1.55;${t.done?"text-decoration:line-through;color:var(--muted)":""}">${esc(t.text)}</span></label>`).join("")}
+ <div class="card"><label class="field-label" for="program-reflection" style="margin-top:0">Короткая заметка о дне (необязательно)</label><textarea id="program-reflection" class="textarea" maxlength="600" rows="3" ${day.saved?"disabled":""} placeholder="Что сегодня было важным? Что помогло или чего хотелось бы больше?">${esc(day.reflection||"")}</textarea><p class="form-hint">Заметка останется только на этом устройстве. Можно оставить поле пустым.</p></div>
  <button class="button full" data-program-action="save" ${day.saved?"disabled":""}>${day.saved?"Прогресс за сегодня сохранён":"Сохранить прогресс за сегодня"}</button>
  <div class="notice green">Пропуск дня — не провал. Можно вернуться тогда, когда будет удобно.</div>
  <div class="inline-actions"><button class="button secondary" data-program-action="pause">Сделать паузу</button><button class="button ghost" data-program-action="finish">Завершить программу</button></div>
  ${weekly?`<div class="card"><b>Небольшая проверка курса</b><p class="sub">Ты сохранил(а) результаты за ${saved} дней. Подходит ли тебе нынешний формат? Можно продолжить, сделать паузу или завершить программу.</p><button class="button secondary full" data-program-action="reviewed">Я ознакомился(ась)</button></div>`:""}`}
- <div class="section-head"><h2>История программы</h2></div>${history.length?history.slice().reverse().slice(0,7).map(x=>`<div class="card record"><div class="record-meta"><b>День ${x.dayNumber}</b><span>${esc(x.date)}</span></div><p>${x.status==="Сохранён"?"Прогресс сохранён":"День не был сохранён"}</p></div>`).join(""):`<div class="empty">Здесь появятся сохранённые дни программы.</div>`}
+ <div class="section-head"><h2>История программы</h2></div>${history.length?history.slice().reverse().slice(0,7).map(x=>`<div class="card record"><div class="record-meta"><b>День ${x.dayNumber}</b><span>${esc(x.date)}</span></div><p>${x.status==="Сохранён"?"Прогресс сохранён":"День не был сохранён"}</p>${x.reflection?`<p class="form-hint">${esc(x.reflection)}</p>`:""}</div>`).join(""):`<div class="empty">Здесь появятся сохранённые дни программы.</div>`}
  <button class="button secondary full" data-page="long">Пересмотреть ответы анкеты</button>`;
 }
 function assistantPage(){return `<div class="eyebrow">ЛОКАЛЬНЫЙ ПОМОЩНИК</div><h1 class="h1">Разговор без спешки</h1><div class="notice">Ответы формируются на устройстве по простым правилам. Сообщения никуда не отправляются. Это пока не полноценная нейросеть.</div><div class="chat-list">${chat.map(m=>`<div class="bubble ${m.role}">${esc(m.text)}</div>`).join("")||'<div class="bubble">Привет. О чём тебе хотелось бы поговорить?</div>'}</div><form id="chat-form"><textarea class="textarea" name="message" maxlength="1800" required placeholder="Напиши сообщение..." rows="3"></textarea><button class="button full" ${busy?"disabled":""}>${busy?"Подожди…":"Отправить"}</button></form><p class="form-hint">Не отправляй личные данные. История диалога существует только до закрытия приложения.</p>`}
@@ -110,7 +157,7 @@ document.addEventListener("click",e=>{
  const n=e.target.closest("[data-page]");if(n){go(n.dataset.page);return}
  if(e.target.closest("#profile-shortcut")){go("profile");return}
  const task=e.target.closest("[data-program-task]");if(task){const d=read();if(d.program?.activeDay&&!d.program.activeDay.saved){d.program.activeDay.tasks=d.program.activeDay.tasks.map(t=>t.id===Number(task.dataset.programTask)?{...t,done:task.checked}:t);write(d);render()}return}
- const pa=e.target.closest("[data-program-action]");if(pa){const d=read(),p=d.program;if(!p)return;const action=pa.dataset.programAction;if(action==="save"&&p.activeDay&&!p.activeDay.saved){p.activeDay.saved=true;p.history=p.history||[];p.history.push({date:p.activeDay.date,dayNumber:p.activeDay.dayNumber,status:"Сохранён",tasks:p.activeDay.tasks.map(t=>({...t}))});write(d);toast("Прогресс за сегодня сохранён");render();return}if(action==="pause")p.paused=true;if(action==="continue"){p.paused=false;p.finished=false}if(action==="finish"){p.finished=true;p.paused=false}if(action==="reviewed"){p.lastReviewCount=p.history.filter(x=>x.status==="Сохранён").length}write(d);render();return}
+ const pa=e.target.closest("[data-program-action]");if(pa){const d=read(),p=d.program;if(!p)return;const action=pa.dataset.programAction;if(action==="save"&&p.activeDay&&!p.activeDay.saved){p.activeDay.reflection=String(document.getElementById("program-reflection")?.value||"").trim().slice(0,600);p.activeDay.saved=true;p.history=p.history||[];p.history.push({date:p.activeDay.date,dayNumber:p.activeDay.dayNumber,status:"Сохранён",tasks:p.activeDay.tasks.map(t=>({...t})),reflection:p.activeDay.reflection});write(d);toast("Прогресс за сегодня сохранён");render();return}if(action==="pause")p.paused=true;if(action==="continue"){p.paused=false;p.finished=false}if(action==="finish"){p.finished=true;p.paused=false}if(action==="reviewed"){p.lastReviewCount=p.history.filter(x=>x.status==="Сохранён").length}write(d);render();return}
  const mood=e.target.closest("[data-mood]");if(mood){saveCheckin(mood.dataset.mood);return}
  const p=e.target.closest("[data-practice]");if(p){selectedPractice=p.dataset.practice;practiceStep=0;go("run");return}
  const st=e.target.closest("[data-step]");if(st){const item=practices.find(x=>x.id===selectedPractice)||practices[0];practiceStep+=Number(st.dataset.step);if(practiceStep>=item.steps.length){const d=read();d.completed.unshift({practice:item.id,date:dateNow()});write(d);practiceStep=0;go("practices");toast("Практика отмечена");return}practiceStep=Math.max(0,practiceStep);render();return}
