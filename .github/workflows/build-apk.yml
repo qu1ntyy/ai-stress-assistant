@@ -157,7 +157,9 @@ jobs:
           class MainActivity : Activity() {
               private lateinit var webView: WebView
               private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+              private var pendingExport: String = ""
               private val fileChooserRequestCode = 1001
+              private val exportRequestCode = 1002
 
               inner class MindfulStorage(context: Context) {
                   private val prefs = context.getSharedPreferences("mindful_space_data", Context.MODE_PRIVATE)
@@ -173,6 +175,24 @@ jobs:
                   @JavascriptInterface
                   fun clear() {
                       prefs.edit().remove("app_data").commit()
+                  }
+
+                  @JavascriptInterface
+                  fun exportData(value: String) {
+                      runOnUiThread {
+                          pendingExport = value
+                          val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                              addCategory(Intent.CATEGORY_OPENABLE)
+                              type = "application/json"
+                              putExtra(Intent.EXTRA_TITLE, "mindful-space-backup.json")
+                          }
+                          try {
+                              startActivityForResult(intent, exportRequestCode)
+                          } catch (_: Exception) {
+                              pendingExport = ""
+                              android.widget.Toast.makeText(this@MainActivity, "Не удалось открыть сохранение файла", android.widget.Toast.LENGTH_LONG).show()
+                          }
+                      }
                   }
               }
 
@@ -216,6 +236,17 @@ jobs:
                       val result = if (resultCode == RESULT_OK && data?.data != null) arrayOf(data.data!!) else null
                       fileChooserCallback?.onReceiveValue(result)
                       fileChooserCallback = null
+                  } else if (requestCode == exportRequestCode) {
+                      val uri = if (resultCode == RESULT_OK) data?.data else null
+                      if (uri != null) {
+                          try {
+                              contentResolver.openOutputStream(uri)?.use { it.write(pendingExport.toByteArray(Charsets.UTF_8)) }
+                              android.widget.Toast.makeText(this, "Резервная копия сохранена", android.widget.Toast.LENGTH_LONG).show()
+                          } catch (_: Exception) {
+                              android.widget.Toast.makeText(this, "Не удалось сохранить резервную копию", android.widget.Toast.LENGTH_LONG).show()
+                          }
+                      }
+                      pendingExport = ""
                   }
               }
               
