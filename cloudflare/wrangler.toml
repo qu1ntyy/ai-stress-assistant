@@ -1,0 +1,10 @@
+name = "mindful-space-gemini-proxy"
+main = "worker.js"
+compatibility_date = "2026-11-05"
+workers_dev = true
+
+[vars]
+GEMINI_MODEL = "gemini-3.8-flash"
+
+# Add Cloudflare rate limiting for this Worker before public use.
+# Set GEMINI_API_KEY as a Worker Secret, not in this file.
