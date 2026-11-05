@@ -98,6 +98,10 @@ jobs:
               id("com.android.application")
               id("org.jetbrains.kotlin.android")
           }
+          val releaseStoreFile = System.getenv("ANDROID_KEYSTORE_PATH")
+          val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+          val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+          val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
           android {
               namespace = "com.stressassistant.app"
               compileSdk = 35
@@ -112,8 +116,23 @@ jobs:
                   kotlinOptions {
                       jvmTarget = "17"
                   }
-                  versionCode = 9
-                  versionName = "0.5.4"
+                  versionCode = 10
+                  versionName = "0.5.5"
+              }
+              if (!releaseStoreFile.isNullOrBlank() && !releaseStorePassword.isNullOrBlank() && !releaseKeyAlias.isNullOrBlank() && !releaseKeyPassword.isNullOrBlank()) {
+                  signingConfigs {
+                      create("release") {
+                          storeFile = file(releaseStoreFile)
+                          storePassword = releaseStorePassword
+                          keyAlias = releaseKeyAlias
+                          keyPassword = releaseKeyPassword
+                      }
+                  }
+                  buildTypes {
+                      getByName("release") {
+                          signingConfig = signingConfigs.getByName("release")
+                      }
+                  }
               }
           }
           EOF
@@ -258,11 +277,28 @@ jobs:
           }
           EOF
 
-      - name: Build APK
+      - name: Prepare release signing key
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mindful-space-release.p12"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/mindful-space-release.p12" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: gradle assembleRelease
+
+      - name: Build debug APK (until release signing is configured)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
         run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: AI-Stress-Assistant-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'app/build/outputs/apk/release/app-release.apk' || 'app/build/outputs/apk/debug/app-debug.apk' }}
